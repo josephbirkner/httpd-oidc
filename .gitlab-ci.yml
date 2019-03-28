@@ -15,12 +15,9 @@ before_script:
 build:
     stage: build
     script:
-        - export TAG=$(sed -n "s/.*MOD_AUTH_OPENIDC_VERSION=//p" Dockerfile)
         - docker pull "$CI_REGISTRY_IMAGE" || true
-        - docker build --cache-from "$CI_REGISTRY_IMAGE" --tag "$CI_REGISTRY_IMAGE":"$TAG" .
-        - docker tag "$CI_REGISTRY_IMAGE":"$TAG" "$CI_REGISTRY_IMAGE"
+        - docker build --cache-from "$CI_REGISTRY_IMAGE" --tag "$CI_REGISTRY_IMAGE" .
         - docker push "$CI_REGISTRY_IMAGE"
-        - docker push "$CI_REGISTRY_IMAGE":"$TAG"
     only:
         refs:
             - master
