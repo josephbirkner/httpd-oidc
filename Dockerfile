@@ -5,16 +5,17 @@ ARG MOD_AUTH_OPENIDC_VERSION=2.3.11
 
 RUN \
     BUILD_DEPS="\
-        apache2-bin \
         ca-certificates \
-        curl \
+        curl" \
+    && RUNTIME_DEPS="\
+        apache2-bin \
         libcjose0 \
         libhiredis0.13 \
         libjansson4" \
     && MOD_AUTH_OPENIDC_URL=https://github.com/zmartzone/mod_auth_openidc/releases/download/v"$MOD_AUTH_OPENIDC_VERSION"/libapache2-mod-auth-openidc_"$MOD_AUTH_OPENIDC_VERSION"-1.stretch+1_amd64.deb \
     && apt update \
     && apt install -y --no-install-recommends \
-        $BUILD_DEPS \
+        $BUILD_DEPS $RUNTIME_DEPS \
     && rm -r /var/lib/apt/lists/* \
     && curl --location "$MOD_AUTH_OPENIDC_URL" -o /tmp/mod_auth_openidc.deb \
     && dpkg -i /tmp/mod_auth_openidc.deb \
