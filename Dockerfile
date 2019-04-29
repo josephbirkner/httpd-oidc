@@ -1,5 +1,5 @@
 FROM httpd:2.4
-LABEL maintainer "Nico Bellack <nico.bellack@daqana.com>"
+LABEL maintainer "Nico Bellack <bellack.n@gmail.com>"
 
 ARG MOD_AUTH_OPENIDC_VERSION=2.3.11
 
