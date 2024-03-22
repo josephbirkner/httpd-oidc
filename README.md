@@ -4,86 +4,44 @@ An Apache webserver image including `mod_auth_openidc` and self-signed certifica
 
 This image is useful if you would like to protect some web content with an OIDC provider, like [Keycloak](https://www.keycloak.org/). For more information, see [the original repository](https://github.com/zmartzone/mod_auth_openidc).
 
-## How To
+## Minimal httpd.conf for a keycloak reverse proxy
 
-1. Pull the image from DockerHub:
-    ```
-    docker pull bellackn/httpd_oidc
-    ```
-2. Adapt the configuration file to your needs. For example, you could do the following:
-    ```
-    docker run --rm -d --name foo bellackn/httpd_oidc
-    docker cp foo:/usr/local/apache2/conf/httpd.conf httpd.conf
-    docker stop foo
-    nano httpd.conf
-    ```
-    (same applies to the SSL config file at `/usr/local/apache2/conf/extra/httpd-ssl.conf`)
-3. Optional: Get some real SSL certificates, e.g. from [Let's Encrypt](https://letsencrypt.org/), and mount them into the container to replace the self-signed ones.
-4. Optional: You can either hardcode the variables that `mod_auth_openidc` needs for authentication in your config files, or you could mount them into the container as an `.env` file (see example below).
-
-## Example Setup with Docker Compose and Keycloak
-
-If you want to serve some content under `/someuri` and protect it with your Keycloak instance, this is a way you could do it.
-
-docker-compose.yml:
 ```
-version: "3.7"
+ServerName my.server
 
-services:
+Listen 8099
 
-    web:
-        image: bellackn/httpd_oidc
-        restart: always
-        env_file: .env
-        ports:
-            - "80:80"
-            - "443:443"
-        volumes:
-            - ./httpd.conf:/usr/local/apache2/conf/httpd.conf
-            - ./httpd-ssl.conf:/usr/local/apache2/conf/extra/httpd-ssl.conf
-```
+LogLevel debug
 
-.env:
-```
-OIDC_PROVIDER=http://your.keycloak/auth/realms/
-OIDC_REALM=realm
-OIDC_CRYPT=much-s3cr3t
-OIDC_CLIENT=testing
-OIDC_SECRET=v3ry-l0ng-s3cr3t
-```
+LoadModule mpm_event_module modules/mod_mpm_event.so
+LoadModule rewrite_module modules/mod_rewrite.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule authz_user_module modules/mod_authz_user.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule proxy_module modules/mod_proxy.so
+LoadModule proxy_http_module modules/mod_proxy_http.so
+LoadModule ssl_module modules/mod_ssl.so
+LoadModule unixd_module modules/mod_unixd.so
 
-httpd.conf:
-```
-[...]
+LoadModule auth_openidc_module /usr/lib/apache2/modules/mod_auth_openidc.so
 
-<IfModule auth_openidc_module>
-    OIDCProviderIssuer ${OIDC_PROVIDER}${OIDC_REALM}
-    OIDCProviderAuthorizationEndpoint ${OIDC_PROVIDER}${OIDC_REALM}/protocol/openid-connect/auth
-    OIDCProviderJwksUri ${OIDC_PROVIDER}${OIDC_REALM}/protocol/openid-connect/certs
-    OIDCProviderTokenEndpoint ${OIDC_PROVIDER}${OIDC_REALM}/protocol/openid-connect/token
-    OIDCProviderUserInfoEndpoint ${OIDC_PROVIDER}${OIDC_REALM}/protocol/openid-connect/userinfo
-    OIDCSSLValidateServer Off
-    OIDCRedirectURI http://${SERVER_NAME}/someuri/redirect_uri
-    OIDCCryptoPassphrase ${OIDC_CRYPT}
-    OIDCClientID ${OIDC_CLIENT}
-    OIDCClientSecret ${OIDC_SECRET}
-    OIDCRemoteUserClaim preferred_username
-    OIDCInfoHook userinfo
-</IfModule>
+# OIDC Configuration
+OIDCProviderMetadataURL https://my-domain/auth/realms/my-realm/.well-known/openid-configuration
+OIDCClientID my-client-id
+OIDCClientSecret v3rys3cr3t
+OIDCRedirectURI redirect.uri
+OIDCCryptoPassphrase sup3rs3cr3t
+OIDCScope "openid email profile roles"
 
-[...]
-```
+# Reverse proxy configuration
+ProxyPreserveHost On
+ProxyRequests Off
+ProxyPass / http://proxy:8089/
+ProxyPassReverse / http://proxy:8089/
 
-httpd-ssl.conf:
-```
-[...]
-
-Alias /someuri "/usr/local/apache2/htdocs/someuri"
-
-<Location /someuri>
+<Location />
     AuthType openid-connect
     Require valid-user
 </Location>
-
-[...]
 ```
